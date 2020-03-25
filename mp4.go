@@ -48,6 +48,8 @@ var atoms = atomNames(map[string]string{
 // Detect PNG image if "implicit" class is used
 var pngHeader = []byte{137, 80, 78, 71, 13, 10, 26, 10}
 
+var _ Metadata = &metadataMP4{}
+
 type atomNames map[string]string
 
 func (f atomNames) Name(n string) []string {
@@ -64,20 +66,22 @@ func (f atomNames) Name(n string) []string {
 type metadataMP4 struct {
 	fileType FileType
 	data     map[string]interface{}
+	duration int
 }
 
 // ReadAtoms reads MP4 metadata atoms from the io.ReadSeeker into a Metadata, returning
 // non-nil error if there was a problem.
 func ReadAtoms(r io.ReadSeeker) (Metadata, error) {
-	m := metadataMP4{
+	m := &metadataMP4{
 		data:     make(map[string]interface{}),
 		fileType: UnknownFileType,
 	}
 	err := m.readAtoms(r)
+
 	return m, err
 }
 
-func (m metadataMP4) readAtoms(r io.ReadSeeker) error {
+func (m *metadataMP4) readAtoms(r io.ReadSeeker) error {
 	for {
 		name, size, err := readAtomHeader(r)
 		if err != nil {
@@ -98,6 +102,14 @@ func (m metadataMP4) readAtoms(r io.ReadSeeker) error {
 
 		case "moov", "udta", "ilst":
 			return m.readAtoms(r)
+
+		case "mvhd":
+			err := m.readMHVDAtom(r, size)
+			if err != nil {
+				return err
+			}
+
+			continue
 		}
 
 		_, ok := atoms[name]
@@ -129,7 +141,7 @@ func (m metadataMP4) readAtoms(r io.ReadSeeker) error {
 	}
 }
 
-func (m metadataMP4) readAtomData(r io.ReadSeeker, name string, size uint32, processedData []string) error {
+func (m *metadataMP4) readAtomData(r io.ReadSeeker, name string, size uint32, processedData []string) error {
 	var b []byte
 	var err error
 	var contentType string
@@ -215,6 +227,90 @@ func (m metadataMP4) readAtomData(r io.ReadSeeker, name string, size uint32, pro
 	return nil
 }
 
+func (m *metadataMP4) readMHVDAtom(r io.ReadSeeker, atomHeaderSize uint32) error {
+	var b []byte
+	var err error
+
+	seekBytesLeft := int64(atomHeaderSize)
+
+	// +1 byte, version
+	b, err = readBytes(r, 1)
+	if err != nil {
+		return err
+	}
+
+	version := getInt(b[0:1])
+
+	// +3 bytes, jump over flags
+	_, err = r.Seek(3, io.SeekCurrent)
+	if err != nil {
+		return err
+	}
+
+	seekBytesLeft -= 4
+
+	var duration float64
+
+	if version == 0 {
+		// version 0 uses 32 bit integers for timestamps
+
+		// +8 bytes, jump over create & mod times
+		_, err = r.Seek(8, io.SeekCurrent)
+		if err != nil {
+			return err
+		}
+
+		// +4 bytes
+		timeScale, err := readUint32BigEndian(r)
+		if err != nil {
+			return err
+		}
+
+		// +4 bytes
+		dur, err := readUint32BigEndian(r)
+		if err != nil {
+			return err
+		}
+
+		seekBytesLeft -= 16
+
+		duration = float64(dur) / float64(timeScale)
+
+	} else {
+		// version 1 uses 64 bit integers for timestamps
+
+		// +16 bytes, jump over create & mod times
+		_, err = r.Seek(16, io.SeekCurrent)
+		if err != nil {
+			return err
+		}
+
+		// +4 bytes
+		timeScale, err := readUint32BigEndian(r)
+		if err != nil {
+			return err
+		}
+
+		// +8 bytes
+		dur, err := readUint64BigEndian(r)
+		if err != nil {
+			return err
+		}
+
+		seekBytesLeft -= 28
+
+		duration = float64(dur) / float64(timeScale)
+	}
+
+	m.duration = int(duration)
+
+	if _, err = r.Seek(seekBytesLeft-8, io.SeekCurrent); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func readAtomHeader(r io.ReadSeeker) (name string, size uint32, err error) {
 	err = binary.Read(r, binary.BigEndian, &size)
 	if err != nil {
@@ -274,12 +370,12 @@ func readCustomAtom(r io.ReadSeeker, size uint32) (_ string, data []string, _ er
 	return subNames["name"], data, nil
 }
 
-func (metadataMP4) Format() Format       { return MP4 }
-func (m metadataMP4) FileType() FileType { return m.fileType }
+func (metadataMP4) Format() Format        { return MP4 }
+func (m *metadataMP4) FileType() FileType { return m.fileType }
 
-func (m metadataMP4) Raw() map[string]interface{} { return m.data }
+func (m *metadataMP4) Raw() map[string]interface{} { return m.data }
 
-func (m metadataMP4) getString(n []string) string {
+func (m *metadataMP4) getString(n []string) string {
 	for _, k := range n {
 		if x, ok := m.data[k]; ok {
 			return x.(string)
@@ -288,7 +384,7 @@ func (m metadataMP4) getString(n []string) string {
 	return ""
 }
 
-func (m metadataMP4) getInt(n []string) int {
+func (m *metadataMP4) getInt(n []string) int {
 	for _, k := range n {
 		if x, ok := m.data[k]; ok {
 			return x.(int)
@@ -297,31 +393,31 @@ func (m metadataMP4) getInt(n []string) int {
 	return 0
 }
 
-func (m metadataMP4) Title() string {
+func (m *metadataMP4) Title() string {
 	return m.getString(atoms.Name("title"))
 }
 
-func (m metadataMP4) Artist() string {
+func (m *metadataMP4) Artist() string {
 	return m.getString(atoms.Name("artist"))
 }
 
-func (m metadataMP4) Album() string {
+func (m *metadataMP4) Album() string {
 	return m.getString(atoms.Name("album"))
 }
 
-func (m metadataMP4) AlbumArtist() string {
+func (m *metadataMP4) AlbumArtist() string {
 	return m.getString(atoms.Name("album_artist"))
 }
 
-func (m metadataMP4) Composer() string {
+func (m *metadataMP4) Composer() string {
 	return m.getString(atoms.Name("composer"))
 }
 
-func (m metadataMP4) Genre() string {
+func (m *metadataMP4) Genre() string {
 	return m.getString(atoms.Name("genre"))
 }
 
-func (m metadataMP4) Year() int {
+func (m *metadataMP4) Year() int {
 	date := m.getString(atoms.Name("year"))
 	if len(date) >= 4 {
 		year, _ := strconv.Atoi(date[:4])
@@ -330,7 +426,7 @@ func (m metadataMP4) Year() int {
 	return 0
 }
 
-func (m metadataMP4) Track() (int, int) {
+func (m *metadataMP4) Track() (int, int) {
 	x := m.getInt([]string{"trkn"})
 	if n, ok := m.data["trkn_count"]; ok {
 		return x, n.(int)
@@ -338,7 +434,7 @@ func (m metadataMP4) Track() (int, int) {
 	return x, 0
 }
 
-func (m metadataMP4) Disc() (int, int) {
+func (m *metadataMP4) Disc() (int, int) {
 	x := m.getInt([]string{"disk"})
 	if n, ok := m.data["disk_count"]; ok {
 		return x, n.(int)
@@ -346,7 +442,7 @@ func (m metadataMP4) Disc() (int, int) {
 	return x, 0
 }
 
-func (m metadataMP4) Lyrics() string {
+func (m *metadataMP4) Lyrics() string {
 	t, ok := m.data["\xa9lyr"]
 	if !ok {
 		return ""
@@ -354,7 +450,7 @@ func (m metadataMP4) Lyrics() string {
 	return t.(string)
 }
 
-func (m metadataMP4) Comment() string {
+func (m *metadataMP4) Comment() string {
 	t, ok := m.data["\xa9cmt"]
 	if !ok {
 		return ""
@@ -362,11 +458,15 @@ func (m metadataMP4) Comment() string {
 	return t.(string)
 }
 
-func (m metadataMP4) Picture() *Picture {
+func (m *metadataMP4) Picture() *Picture {
 	v, ok := m.data["covr"]
 	if !ok {
 		return nil
 	}
 	p, _ := v.(*Picture)
 	return p
+}
+
+func (m *metadataMP4) Duration() int {
+	return m.duration
 }

@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/dhowden/tag/internal/id3v1_test"
+	"github.com/unitnotes/audiotag/internal/id3v1_test"
 )
 
 //go:generate go-bindata -o internal/id3v1_test/id3v1_testdata.go -pkg id3v1_test -ignore .txt -ignore .go internal/id3v1_test

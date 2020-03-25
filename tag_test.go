@@ -23,6 +23,7 @@ type testMetadata struct {
 	Track       int
 	TrackTotal  int
 	Year        int
+	Duration    int
 }
 
 var emptyMetadata = testMetadata{}
@@ -40,7 +41,26 @@ var fullMetadata = testMetadata{
 	TrackTotal:  6,
 	Year:        2000,
 	Comment:     "Test Comment",
+	Duration:    0,
 }
+
+var fullMetadataWithDuration = testMetadata{
+	Album:       "Test Album",
+	AlbumArtist: "Test AlbumArtist",
+	Artist:      "Test Artist",
+	Composer:    "Test Composer",
+	Disc:        2,
+	DiscTotal:   0,
+	Genre:       "Jazz",
+	Lyrics:      "",
+	Title:       "Test Title",
+	Track:       3,
+	TrackTotal:  6,
+	Year:        2000,
+	Comment:     "Test Comment",
+	Duration:    3,
+}
+
 var mp3id3v11Metadata = testMetadata{
 	Album:   "Test Album",
 	Artist:  "Test Artist",
@@ -59,15 +79,15 @@ func TestReadFrom(t *testing.T) {
 		"with_tags/sample.id3v22.mp3":    fullMetadata,
 		"with_tags/sample.id3v23.mp3":    fullMetadata,
 		"with_tags/sample.id3v24.mp3":    fullMetadata,
-		"with_tags/sample.m4a":           fullMetadata,
-		"with_tags/sample.mp4":           fullMetadata,
+		"with_tags/sample.m4a":           fullMetadataWithDuration,
+		"with_tags/sample.mp4":           fullMetadataWithDuration,
 		"with_tags/sample.ogg":           fullMetadata,
 		"with_tags/sample.multipage.ogg": fullMetadata,
 		"with_tags/sample.dsf":           fullMetadata,
 		"without_tags/sample.flac":       emptyMetadata,
-		"without_tags/sample.m4a":        emptyMetadata,
+		"without_tags/sample.m4a":        {Duration: 3},
 		"without_tags/sample.mp3":        emptyMetadata,
-		"without_tags/sample.mp4":        emptyMetadata,
+		"without_tags/sample.mp4":        {Duration: 5},
 		"without_tags/sample.ogg":        emptyMetadata,
 	}
 
@@ -117,6 +137,7 @@ func compareMetadata(t *testing.T, m Metadata, tt testMetadata) {
 	track, trackTotal := m.Track()
 	testValue(t, tt.Track, track)
 	testValue(t, tt.TrackTotal, trackTotal)
+	testValue(t, tt.Duration, m.Duration())
 }
 
 func testValue(t *testing.T, expected interface{}, found interface{}) {

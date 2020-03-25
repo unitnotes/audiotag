@@ -107,3 +107,7 @@ func (m metadataDSF) Comment() string {
 func (m metadataDSF) Raw() map[string]interface{} {
 	return m.id3.Raw()
 }
+
+func (m metadataDSF) Duration() int {
+	return 0
+}

@@ -249,3 +249,7 @@ func (m *metadataVorbis) Comment() string {
 func (m *metadataVorbis) Picture() *Picture {
 	return m.p
 }
+
+func (m metadataVorbis) Duration() int {
+	return 0
+}

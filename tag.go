@@ -141,6 +141,9 @@ type Metadata interface {
 	// Comment returns the comment, or an empty string if unavailable.
 	Comment() string
 
+	// Duration returns the track duration in seconds.
+	Duration() int
+
 	// Raw returns the raw mapping of retrieved tag names and associated values.
 	// NB: tag/atom names are not standardised between formats.
 	Raw() map[string]interface{}
