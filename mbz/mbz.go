@@ -64,12 +64,12 @@ func (i Info) set(t, v string) {
 
 // extractID3 attempts to extract MusicBrainz Picard tags from m.Raw(), where m.Format
 // is assumed to be a supported version of ID3.
-func extractID3(m tag.Metadata) Info {
+func extractID3(m audiotag.Metadata) Info {
 	var txxx, ufid string
 	switch m.Format() {
-	case tag.ID3v2_2:
+	case audiotag.ID3v2_2:
 		txxx, ufid = "TXX", "UFI"
-	case tag.ID3v2_3, tag.ID3v2_4:
+	case audiotag.ID3v2_3, audiotag.ID3v2_4:
 		txxx, ufid = "TXXX", "UFID"
 	}
 
@@ -77,11 +77,11 @@ func extractID3(m tag.Metadata) Info {
 	for k, v := range m.Raw() {
 		switch {
 		case strings.HasPrefix(k, txxx):
-			if str, ok := v.(*tag.Comm); ok {
+			if str, ok := v.(*audiotag.Comm); ok {
 				i.set(str.Description, str.Text)
 			}
 		case strings.HasPrefix(k, ufid):
-			if id, ok := v.(*tag.UFID); ok {
+			if id, ok := v.(*audiotag.UFID); ok {
 				if id.Provider == UFIDProviderURL {
 					i.set(Recording, string(id.Identifier))
 				}
@@ -93,7 +93,7 @@ func extractID3(m tag.Metadata) Info {
 
 // extractMP4Vorbis attempts to extract MusicBrainz Picard tags from m.Raw(), where m.Format
 // is assumed to be MP4 or VORBIS.
-func extractMP4Vorbis(m tag.Metadata) Info {
+func extractMP4Vorbis(m audiotag.Metadata) Info {
 	i := Info{}
 	for t, v := range m.Raw() {
 		if s, ok := v.(string); ok {
@@ -105,9 +105,9 @@ func extractMP4Vorbis(m tag.Metadata) Info {
 
 // Extract tags created by MusicBrainz Picard which can be used with with the MusicBrainz and LastFM APIs.
 // See https://picard.musicbrainz.org/docs/mappings/ for more information.
-func Extract(m tag.Metadata) Info {
+func Extract(m audiotag.Metadata) Info {
 	switch m.Format() {
-	case tag.ID3v2_2, tag.ID3v2_3, tag.ID3v2_4:
+	case audiotag.ID3v2_2, audiotag.ID3v2_3, audiotag.ID3v2_4:
 		return extractID3(m)
 	}
 	return extractMP4Vorbis(m)

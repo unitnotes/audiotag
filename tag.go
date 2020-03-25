@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package tag provides MP3 (ID3: v1, 2.2, 2.3 and 2.4), MP4, FLAC and OGG metadata detection,
+// Package audiotag provides MP3 (ID3: v1, 2.2, 2.3 and 2.4), MP4, FLAC and OGG metadata detection,
 // parsing and artwork extraction.
 //
 // Detect and parse tag metadata from an io.ReadSeeker (i.e. an *os.File):
@@ -12,7 +12,7 @@
 // 	}
 // 	log.Print(m.Format()) // The detected format.
 // 	log.Print(m.Title())  // The title of the track (see Metadata interface for more details).
-package tag
+package audiotag
 
 import (
 	"errors"
