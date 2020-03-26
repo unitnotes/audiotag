@@ -14,7 +14,7 @@ This package provides MP3 (ID3v1,2.{2,3,4}) and MP4 (ACC, M4A, ALAC), OGG and FL
 Detect and parse tag metadata from an `io.ReadSeeker` (i.e. an `*os.File`):
 
 ```go
-m, err := tag.ReadFrom(f)
+m, err := audiotag.ReadFrom(f)
 if err != nil {
 	log.Fatal(err)
 }

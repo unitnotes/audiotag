@@ -6,7 +6,7 @@
 // parsing and artwork extraction.
 //
 // Detect and parse tag metadata from an io.ReadSeeker (i.e. an *os.File):
-// 	m, err := tag.ReadFrom(f)
+// 	m, err := audiotag.ReadFrom(f)
 // 	if err != nil {
 // 		log.Fatal(err)
 // 	}
