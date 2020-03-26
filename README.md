@@ -3,6 +3,8 @@
 This fork contains additional code that implements duration parsing.
 Currently supported only M4A files.
 
+Inspired by https://github.com/devsnd/tinytag/
+
 # MP3/MP4/OGG/FLAC metadata parsing library
 [![Build Status](https://travis-ci.org/dhowden/tag.svg?branch=master)](https://travis-ci.org/dhowden/tag)
 [![GoDoc](https://godoc.org/github.com/unitnotes/audiotag?status.svg)](https://godoc.org/github.com/unitnotes/audiotag)
